@@ -18,7 +18,7 @@ namespace RegionTogether
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(RegionTogetherCodeFixProvider)), Shared]
     public class RegionTogetherCodeFixProvider : CodeFixProvider
     {
-        private const string title = "Make uppercase";
+        private const string title = "Regionブロックで囲む";
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds
         {
@@ -40,34 +40,101 @@ namespace RegionTogether
             var diagnosticSpan = diagnostic.Location.SourceSpan;
 
             // Find the type declaration identified by the diagnostic.
-            var declaration = root.FindToken(diagnosticSpan.Start).Parent.AncestorsAndSelf().OfType<TypeDeclarationSyntax>().First();
+            var declaration = (MemberDeclarationSyntax)root.FindNode(diagnosticSpan);
 
             // Register a code action that will invoke the fix.
             context.RegisterCodeFix(
                 CodeAction.Create(
                     title: title,
-                    createChangedSolution: c => MakeUppercaseAsync(context.Document, declaration, c),
+                    createChangedDocument: c => MakeRegion(context.Document, declaration, c),
                     equivalenceKey: title),
                 diagnostic);
         }
 
-        private async Task<Solution> MakeUppercaseAsync(Document document, TypeDeclarationSyntax typeDecl, CancellationToken cancellationToken)
+        private async Task<Document> MakeRegion(Document document, MemberDeclarationSyntax declaration, CancellationToken cancellationToken)
         {
-            // Compute new uppercase name.
-            var identifierToken = typeDecl.Identifier;
-            var newName = identifierToken.Text.ToUpperInvariant();
-
-            // Get the symbol representing the type to be renamed.
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
-            var typeSymbol = semanticModel.GetDeclaredSymbol(typeDecl, cancellationToken);
+            var typeSymbol = semanticModel.GetDeclaredSymbol(declaration, cancellationToken);
 
-            // Produce a new solution that has all references to that type renamed, including the declaration.
-            var originalSolution = document.Project.Solution;
-            var optionSet = originalSolution.Workspace.Options;
-            var newSolution = await Renamer.RenameSymbolAsync(document.Project.Solution, typeSymbol, newName, optionSet, cancellationToken).ConfigureAwait(false);
+            var newRegionDirective = SyntaxFactory.Trivia(
+                SyntaxFactory.RegionDirectiveTrivia(true)
+                    .WithHashToken(SyntaxFactory.Token(SyntaxKind.HashToken‌​))
+                    .WithRegionKeyword(SyntaxFactory.Token(SyntaxFactory.T‌​riviaList(), SyntaxKind.RegionKeyword, SyntaxFactory.T‌​riviaList(SyntaxFactory.Whitespace(" "))))
+                    .WithEndOfDirectiveToken(
+                        SyntaxFactory.Token(
+                            SyntaxFactory.T‌​riviaList(
+                                SyntaxFact‌​ory.PreprocessingMes‌​sage(RegionTogetherAnalyzer.CreateRegionName(typeSymbol))), 
+                            SyntaxKind.EndOfDirectiveToken, 
+                            SyntaxFactory.TriviaList(
+                                SyntaxFactory.EndOfLine("\r\n")))));
 
-            // Return the new solution with the now-uppercase type name.
-            return newSolution;
+            var root = await declaration.SyntaxTree.GetRootAsync(cancellationToken);
+            SyntaxNode newRoot;
+            var regionDirective = RegionTogetherAnalyzer.GetLeadingRegionAndName(declaration, out var _);
+            if (regionDirective != null)
+            {
+                newRoot = root.ReplaceTrivia(regionDirective.Value, newRegionDirective);
+            }
+            else
+            {
+                var token = declaration.GetFirstToken();
+                if (token.HasLeadingTrivia)
+                {
+                    // メソッドやプロパティの直前にあるコメント
+                    SyntaxTrivia? commentTrivia = null;
+                    foreach (var trivia in token.LeadingTrivia.Reverse())
+                    {
+                        if (trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) ||
+                            trivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) ||
+                            trivia.IsKind(SyntaxKind.MultiLineCommentTrivia) ||
+                            trivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia))
+                        {
+                            commentTrivia = trivia;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    if (commentTrivia != null)
+                    {
+                        // メソッドやプロパティの直前にコメントがある場合はコメントの直前に差し込む
+                        newRoot = root.InsertTriviaBefore(commentTrivia.Value, new[] { newRegionDirective });
+                    }
+                    else
+                    {
+                        newRoot = root.InsertTriviaAfter(token.LeadingTrivia.Last(), new[] { newRegionDirective });
+                    }
+                }
+                else
+                {
+                    newRoot = root.ReplaceToken(token, token.WithLeadingTrivia(newRegionDirective));
+                }
+
+                var spanDiff = newRoot.FullSpan.End - root.FullSpan.End;
+                var newDeclaration = newRoot.FindNode(new TextSpan(declaration.SpanStart + spanDiff, declaration.Span.Length));
+                var nextNodeOrToken = newDeclaration.Parent.ChildNodesAndTokens().SkipWhile(x => x != newDeclaration).Skip(1).First();
+                var nextToken = nextNodeOrToken.IsToken ? nextNodeOrToken.AsToken() : nextNodeOrToken.AsNode().DescendantTokens().First();
+                var newEndRegionDirective = 
+                    SyntaxFactory.Trivia(
+                        SyntaxFactory.EndRegionDirectiveTrivia(true).WithEndOfDirectiveToken(
+                            SyntaxFactory.Token(
+                                SyntaxFactory.TriviaList(), 
+                                SyntaxKind.EndOfDirectiveToken, 
+                                SyntaxFactory.TriviaList(
+                                    SyntaxFactory.EndOfLine("\r\n")))));
+                if (nextToken.HasLeadingTrivia)
+                {
+                    newRoot = newRoot.InsertTriviaBefore(nextToken.LeadingTrivia.First(), new[] { newEndRegionDirective });
+                }
+                else
+                {
+                    newRoot = newRoot.ReplaceToken(nextToken, nextToken.WithLeadingTrivia(newEndRegionDirective));
+                }
+            }
+
+            return document.WithSyntaxRoot(newRoot);
         }
     }
 }
