@@ -91,6 +91,10 @@ namespace RegionTogether
                         {
                             commentTrivia = trivia;
                         }
+                        if (trivia.IsKind(SyntaxKind.WhitespaceTrivia))
+                        {
+                            if (commentTrivia != null) break;
+                        }
                         else
                         {
                             break;
