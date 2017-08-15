@@ -6,13 +6,12 @@
     <title>RegionTogether</title>
     <authors>ats124</authors>
     <owners>ats124</owners>
-    <licenseUrl>http://LICENSE_URL_HERE_OR_DELETE_THIS_LINE</licenseUrl>
-    <projectUrl>http://PROJECT_URL_HERE_OR_DELETE_THIS_LINE</projectUrl>
-    <iconUrl>http://ICON_URL_HERE_OR_DELETE_THIS_LINE</iconUrl>
+    <licenseUrl>https://github.com/ats124/RegionTogether/blob/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/ats124/RegionTogether</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>RegionTogether</description>
-    <releaseNotes>Summary of changes made in this release of the package.</releaseNotes>
-    <copyright>Copyright</copyright>
+    <releaseNotes>Initial release.</releaseNotes>
+    <copyright>Copyright (c) 2017 ats124</copyright>
     <tags>RegionTogether, analyzers</tags>
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System" targetFramework="" />
