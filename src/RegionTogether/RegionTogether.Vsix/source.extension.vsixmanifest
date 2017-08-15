@@ -1,9 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="RegionTogether..1cdb3208-1a55-426e-9d50-4a07e3bb0e4e" Version="1.0" Language="en-US" Publisher="ats124"/>
+    <Identity Id="RegionTogether..1cdb3208-1a55-426e-9d50-4a07e3bb0e4e" Version="1.0" Language="ja-JP" Publisher="ats124"/>
     <DisplayName>RegionTogether</DisplayName>
-    <Description xml:space="preserve">This is a sample diagnostic extension for the .NET Compiler Platform ("Roslyn").</Description>
+    <Description xml:space="preserve">This is a diagnostic extension that requires a region directive for each method or property</Description>
+    <MoreInfo>https://github.com/ats124/RegionTogether</MoreInfo>
+    <License>LICENSE.txt</License>
   </Metadata>
   <Installation>
     <InstallationTarget Version="[14.0,]" Id="Microsoft.VisualStudio.Pro" />
